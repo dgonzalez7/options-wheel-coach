@@ -1,5 +1,5 @@
 # Account / position data (never commit)
-data/
+data/*
 !data/*.example.json
 
 # Daily snapshots and logs
