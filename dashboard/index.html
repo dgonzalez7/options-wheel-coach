@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Options Wheel Coach</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --text-faint: #94a3b8;
+      --accent: #1e40af;
+      --critical: #dc2626;
+      --action: #ea580c;
+      --caution: #ca8a04;
+      --info: #475569;
+      --ok: #16a34a;
+      --bull: #16a34a;
+      --neutral: #475569;
+      --bear: #dc2626;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ---------- Layout ---------- */
+
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px 24px 48px;
+    }
+
+    .app-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 4px 0 16px;
+    }
+    .app-title h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .app-title .subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ---------- Account header strip ---------- */
+
+    .account-header {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .account-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .account-stats {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px 24px;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+      white-space: nowrap;
+    }
+    .stat-value {
+      font-size: 16px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+      margin-top: 1px;
+    }
+
+    .regime-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .regime-bull   { background: #dcfce7; color: var(--bull); }
+    .regime-neutral{ background: #e2e8f0; color: var(--neutral); }
+    .regime-bear   { background: #fee2e2; color: var(--bear); }
+
+    /* ---------- Tab navigation ---------- */
+
+    .tab-nav {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .tab-button {
+      background: transparent;
+      border: 0;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      font-family: inherit;
+    }
+    .tab-button:hover { color: var(--text); }
+    .tab-button.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ---------- Cards / sections ---------- */
+
+    .section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .empty-state {
+      padding: 32px 16px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .empty-state .hint {
+      font-size: 12px;
+      color: var(--text-faint);
+      margin-top: 6px;
+    }
+
+    .coming-soon {
+      padding: 64px 16px;
+      text-align: center;
+      color: var(--text-faint);
+      font-size: 14px;
+    }
+
+    /* ---------- Positions table ---------- */
+
+    table.positions {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    table.positions th {
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    table.positions td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    table.positions tbody tr:hover { background: #f9fafb; }
+
+    /* ---------- Alerts ---------- */
+
+    .alert-row {
+      padding: 10px 12px;
+      border-left: 3px solid var(--border-strong);
+      background: #f9fafb;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .alert-row.severity-critical { border-left-color: var(--critical); }
+    .alert-row.severity-action   { border-left-color: var(--action); }
+    .alert-row.severity-caution  { border-left-color: var(--caution); }
+    .alert-row.severity-info     { border-left-color: var(--info); }
+    .alert-row.severity-ok       { border-left-color: var(--ok); }
+
+    .alert-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .severity-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .severity-tag.severity-critical { background: #fee2e2; color: var(--critical); }
+    .severity-tag.severity-action   { background: #fed7aa; color: var(--action); }
+    .severity-tag.severity-caution  { background: #fef3c7; color: var(--caution); }
+    .severity-tag.severity-info     { background: #e2e8f0; color: var(--info); }
+    .severity-tag.severity-ok       { background: #dcfce7; color: var(--ok); }
+
+    .alert-label {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .alert-advice {
+      font-size: 13px;
+      color: var(--text);
+      margin: 2px 0;
+    }
+    .alert-advice strong { font-weight: 600; }
+    .alert-consider {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .alert-ping {
+      font-size: 11px;
+      color: var(--text-faint);
+      margin-top: 4px;
+    }
+
+    /* ---------- Footer ---------- */
+
+    .footer {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-faint);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ---------- Errors ---------- */
+
+    .error-banner {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: var(--critical);
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .error-banner .error-title { font-weight: 600; margin-bottom: 4px; }
+    .error-banner code {
+      background: rgba(220, 38, 38, 0.08);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    /* ---------- Responsive ---------- */
+
+    @media (max-width: 1100px) {
+      .account-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .account-header { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <div class="app-title">
+      <h1>Options Wheel Coach</h1>
+      <span class="subtitle">Phase 1 · empty-state preview</span>
+    </div>
+
+    <div id="error-container"></div>
+
+    <!-- Account header strip -->
+    <header class="account-header" id="account-header">
+      <div class="account-name" id="account-name">—</div>
+      <div class="account-stats" id="account-stats"></div>
+      <div id="regime-container"></div>
+    </header>
+
+    <!-- Tab navigation -->
+    <nav class="tab-nav" role="tablist">
+      <button class="tab-button active" data-tab="today" role="tab">Today</button>
+      <button class="tab-button" data-tab="performance" role="tab">Performance</button>
+      <button class="tab-button" data-tab="risk" role="tab">Risk</button>
+      <button class="tab-button" data-tab="history" role="tab">History</button>
+    </nav>
+
+    <!-- Tab content -->
+    <main>
+
+      <!-- Today -->
+      <section id="tab-today" class="tab-pane active" role="tabpanel">
+        <div class="section">
+          <h2>Alerts</h2>
+          <div id="alerts-panel"></div>
+        </div>
+
+        <div class="section">
+          <h2>Open Positions</h2>
+          <div id="positions-container"></div>
+        </div>
+      </section>
+
+      <!-- Performance -->
+      <section id="tab-performance" class="tab-pane" role="tabpanel">
+        <div class="section">
+          <div class="coming-soon">Coming in Phase 3.</div>
+        </div>
+      </section>
+
+      <!-- Risk -->
+      <section id="tab-risk" class="tab-pane" role="tabpanel">
+        <div class="section">
+          <div class="coming-soon">Coming in Phase 3.</div>
+        </div>
+      </section>
+
+      <!-- History -->
+      <section id="tab-history" class="tab-pane" role="tabpanel">
+        <div class="section">
+          <div class="coming-soon">Coming in Phase 3.</div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <span>Snapshot: <span id="snapshot-ts">—</span></span>
+      <span>dgonzalez7 / options-wheel-coach</span>
+    </footer>
+
+  </div>
+
+  <script>
+    // ---------- Formatters ----------
+
+    const fmtMoney0 = (n) =>
+      typeof n === "number"
+        ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 })
+        : "—";
+
+    const fmtMoney2 = (n) =>
+      typeof n === "number"
+        ? "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : "—";
+
+    const fmtPct1 = (n) =>
+      typeof n === "number" ? n.toFixed(1) + "%" : "—";
+
+    const fmtDate = (iso) => {
+      if (!iso) return "—";
+      try {
+        const d = new Date(iso + "T00:00:00");
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      } catch {
+        return iso;
+      }
+    };
+
+    // ---------- Tab switching ----------
+
+    document.querySelectorAll(".tab-button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll(".tab-button").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-pane").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + tab).classList.add("active");
+      });
+    });
+
+    // ---------- Computed metrics ----------
+
+    function computePositionMetrics(position) {
+      const m = { ...position };
+      m.collateral =
+        position.leg === "CSP"
+          ? position.strike * 100 * position.contracts
+          : 0;
+      m.share_value =
+        position.leg === "CC" && position.current_stock_price
+          ? position.current_stock_price * 100 * position.contracts
+          : 0;
+      return m;
+    }
+
+    function computePortfolioMetrics(portfolio, positions) {
+      let csp_collateral_total = 0;
+      let share_value_total = 0;
+      for (const p of positions) {
+        const m = computePositionMetrics(p);
+        csp_collateral_total += m.collateral;
+        share_value_total += m.share_value;
+      }
+      const deployed = csp_collateral_total + share_value_total;
+      const total = portfolio.total_account_value || 0;
+      return {
+        csp_collateral_total,
+        share_value_total,
+        deployed,
+        deployment_pct: total > 0 ? (deployed / total) * 100 : 0,
+        cash_pct: total > 0 ? (portfolio.cash_available / total) * 100 : 0,
+        active_count: positions.length,
+      };
+    }
+
+    // ---------- Rendering ----------
+
+    function renderHeader(portfolio, positions) {
+      const m = computePortfolioMetrics(portfolio, positions);
+
+      document.getElementById("account-name").textContent =
+        portfolio.account_name || "Account";
+
+      const stats = [
+        {
+          label: "Total Value",
+          value: fmtMoney0(portfolio.total_account_value),
+          sub: "as of " + fmtDate(portfolio.as_of),
+        },
+        {
+          label: "Cash Available",
+          value: fmtMoney0(portfolio.cash_available),
+          sub: fmtPct1(m.cash_pct) + " of total",
+        },
+        {
+          label: "CSP Collateral",
+          value: fmtMoney0(m.csp_collateral_total),
+          sub:
+            positions.filter((p) => p.leg === "CSP").length +
+            " open put" +
+            (positions.filter((p) => p.leg === "CSP").length === 1 ? "" : "s"),
+        },
+        {
+          label: "Share Value",
+          value: fmtMoney0(m.share_value_total),
+          sub:
+            positions.filter((p) => p.leg === "CC").length +
+            " held position" +
+            (positions.filter((p) => p.leg === "CC").length === 1 ? "" : "s"),
+        },
+        {
+          label: "Deployed",
+          value: fmtPct1(m.deployment_pct),
+          sub: fmtMoney0(m.deployed) + " of " + fmtMoney0(portfolio.total_account_value),
+        },
+        {
+          label: "Positions",
+          value: String(m.active_count),
+          sub: "open",
+        },
+      ];
+
+      const statsEl = document.getElementById("account-stats");
+      statsEl.innerHTML = stats
+        .map(
+          (s) => `
+        <div class="stat">
+          <div class="stat-label">${s.label}</div>
+          <div class="stat-value">${s.value}</div>
+          <div class="stat-sub">${s.sub}</div>
+        </div>`
+        )
+        .join("");
+
+      const regime = (portfolio.market_regime || "neutral").toLowerCase();
+      document.getElementById("regime-container").innerHTML =
+        `<span class="regime-badge regime-${regime}">${regime}</span>`;
+    }
+
+    function renderAlerts(alerts) {
+      const el = document.getElementById("alerts-panel");
+      if (!alerts || alerts.length === 0) {
+        el.innerHTML = `
+          <div class="empty-state">
+            No active alerts.
+            <div class="hint">The daily script (Phase 2) will populate this panel after each evaluation run.</div>
+          </div>`;
+        return;
+      }
+      el.innerHTML = alerts
+        .map((a) => {
+          const sev = (a.severity || "info").toLowerCase();
+          return `
+          <div class="alert-row severity-${sev}">
+            <div class="alert-head">
+              <span class="severity-tag severity-${sev}">${a.severity}</span>
+              <span class="alert-label">${a.ticker || ""} ${a.rule_id || ""}</span>
+            </div>
+            <div class="alert-advice"><strong>Conservative Advice:</strong> ${a.conservative_advice || ""}</div>
+            <div class="alert-consider">Consider: ${a.consider || ""}</div>
+            <div class="alert-ping">Ping Claude for the walkthrough.</div>
+          </div>`;
+        })
+        .join("");
+    }
+
+    function renderPositions(positions) {
+      const container = document.getElementById("positions-container");
+      if (!positions || positions.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            No open positions.
+            <div class="hint">Tell Claude in chat when you place a trade and it will be added here.</div>
+          </div>`;
+        return;
+      }
+
+      const rows = positions
+        .map((p) => {
+          const m = computePositionMetrics(p);
+          const sectorTag = p.sector_override || p.sector || "—";
+          return `
+          <tr>
+            <td><strong>${p.ticker}</strong> <span style="color: var(--text-faint); font-size: 11px;">${sectorTag}</span></td>
+            <td>${p.leg}</td>
+            <td>${fmtMoney2(p.strike)}</td>
+            <td>${p.contracts}</td>
+            <td>${fmtDate(p.expiration_date)}</td>
+            <td>${fmtMoney2(p.entry_premium_per_share)}</td>
+            <td>${fmtMoney0(m.collateral || m.share_value)}</td>
+          </tr>`;
+        })
+        .join("");
+
+      container.innerHTML = `
+        <table class="positions">
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Leg</th>
+              <th>Strike</th>
+              <th>Contracts</th>
+              <th>Expiration</th>
+              <th>Entry Premium</th>
+              <th>Collateral / Shares</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="hint" style="margin-top: 8px; color: var(--text-faint); font-size: 11px;">
+          Full metrics column-set lands in Phase 2 once the daily updater is in place.
+        </div>`;
+    }
+
+    function renderFooter(portfolio) {
+      document.getElementById("snapshot-ts").textContent =
+        fmtDate(portfolio.as_of) + " (manual)";
+    }
+
+    // ---------- Error display ----------
+
+    function showError(err) {
+      const ec = document.getElementById("error-container");
+      ec.innerHTML = `
+        <div class="error-banner">
+          <div class="error-title">Could not load data</div>
+          <div>${String(err.message || err)}</div>
+          <div style="margin-top: 8px;">
+            Try running <code>python scripts/serve.py</code> from the workspace folder,
+            then open <code>http://localhost:8000/dashboard/index.html</code>.
+          </div>
+        </div>`;
+    }
+
+    // ---------- Bootstrap ----------
+
+    async function loadData() {
+      const [portfolioResp, positionsResp] = await Promise.all([
+        fetch("../data/portfolio.json"),
+        fetch("../data/positions_open.json"),
+      ]);
+      if (!portfolioResp.ok) throw new Error("portfolio.json: HTTP " + portfolioResp.status);
+      if (!positionsResp.ok) throw new Error("positions_open.json: HTTP " + positionsResp.status);
+      const portfolio = await portfolioResp.json();
+      const positionsFile = await positionsResp.json();
+      const positions = positionsFile.positions || [];
+
+      renderHeader(portfolio, positions);
+      renderAlerts([]); // Phase 2 populates
+      renderPositions(positions);
+      renderFooter(portfolio);
+    }
+
+    loadData().catch(showError);
+  </script>
+</body>
+</html>
