@@ -1,0 +1,40 @@
+# Account / position data (never commit)
+data/
+!data/*.example.json
+
+# Daily snapshots and logs
+data/snapshots/
+*.log
+alerts_history.json
+
+# Secrets (none today, but defensive)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Substack paid-content (your private reference)
+WheelStrategyRules/
+*.pdf
+trade_brief_*.html
+*.xlsx
+
+# Excel lock files (appear when a workbook is open)
+~$*
+
+# OneDrive metadata
+desktop.ini
+
+# Generic temp files
+*.tmp
