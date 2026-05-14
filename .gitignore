@@ -38,3 +38,6 @@ desktop.ini
 
 # Generic temp files
 *.tmp
+
+# Generated dashboard data (contains real position values)
+dashboard/data.js

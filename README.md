@@ -43,7 +43,13 @@ options-wheel-coach/
    cp data/portfolio.example.json data/portfolio.json
    ```
 4. Open `data/portfolio.json` and set `total_account_value`, `cash_available`, and any rule overrides.
-5. Open `dashboard/index.html` to view the dashboard.
+5. Build the dashboard data file (this reads the JSON files and writes `dashboard/data.js`):
+   ```bash
+   python scripts/build_dashboard_data.py
+   ```
+6. Double-click `dashboard/index.html` to open the dashboard in your browser.
+
+Re-run step 5 anytime the JSON files change. In Phase 2, the daily updater script runs it automatically.
 
 ## Disclaimer
 
