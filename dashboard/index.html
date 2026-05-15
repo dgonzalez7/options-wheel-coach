@@ -203,27 +203,66 @@
 
     /* ---------- Positions table ---------- */
 
+    .positions-wrap {
+      overflow-x: auto;
+    }
     table.positions {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12.5px;
       font-variant-numeric: tabular-nums;
     }
     table.positions th {
       text-align: left;
       font-weight: 600;
-      font-size: 11px;
+      font-size: 10.5px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       color: var(--text-muted);
-      padding: 8px 10px;
+      padding: 8px 8px;
       border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
     table.positions td {
-      padding: 10px;
+      padding: 9px 8px;
       border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
     table.positions tbody tr:hover { background: #f9fafb; }
+    table.positions .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Color-coded value chips */
+    .chip-good   { color: var(--ok); }
+    .chip-warn   { color: var(--caution); }
+    .chip-bad    { color: var(--critical); }
+    .chip-bright { color: var(--ok); font-weight: 600; }
+
+    .leg-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      background: #e2e8f0;
+      color: var(--text);
+    }
+    .leg-badge.cc { background: #fef3c7; color: #92400e; }
+
+    .row-alert {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .row-alert.severity-critical { background: #fee2e2; color: var(--critical); }
+    .row-alert.severity-action   { background: #fed7aa; color: var(--action); }
+    .row-alert.severity-caution  { background: #fef3c7; color: var(--caution); }
+    .row-alert.severity-info     { background: #e2e8f0; color: var(--info); }
+    .row-alert.severity-ok       { background: #dcfce7; color: var(--ok); }
+    .row-alert .rule-id          { font-weight: 400; font-size: 9.5px; opacity: 0.7; margin-left: 4px; }
 
     /* ---------- Alerts ---------- */
 
@@ -326,7 +365,7 @@
 
     <div class="app-title">
       <h1>Options Wheel Coach</h1>
-      <span class="subtitle">Phase 1 · empty-state preview</span>
+      <span class="subtitle">Phase 2 · daily updater live</span>
     </div>
 
     <div id="error-container"></div>
@@ -435,7 +474,7 @@
 
     // ---------- Computed metrics ----------
 
-    function computePositionMetrics(position) {
+    function computePositionMetrics(position, portfolio) {
       const m = { ...position };
       m.collateral =
         position.leg === "CSP"
@@ -445,14 +484,83 @@
         position.leg === "CC" && position.current_stock_price
           ? position.current_stock_price * 100 * position.contracts
           : 0;
+
+      // Cushion %
+      if (position.current_stock_price !== null && position.current_stock_price !== undefined) {
+        if (position.leg === "CSP") {
+          m.cushion_pct = (position.current_stock_price - position.strike) / position.strike * 100;
+        } else {
+          m.cushion_pct = (position.strike - position.current_stock_price) / position.current_stock_price * 100;
+        }
+      }
+
+      // Stock move since open
+      if (position.current_stock_price !== null && position.entry_stock_price) {
+        m.stock_move_pct = (position.current_stock_price - position.entry_stock_price) / position.entry_stock_price * 100;
+      }
+
+      // Premium captured + unrealized P&L
+      if (position.current_option_price !== null && position.current_option_price !== undefined && position.entry_premium_per_share) {
+        m.pct_captured = (position.entry_premium_per_share - position.current_option_price) / position.entry_premium_per_share * 100;
+        m.unrealized_pnl = (position.entry_premium_per_share - position.current_option_price) * 100 * position.contracts;
+      }
+
+      // Position % of portfolio
+      const total = portfolio ? portfolio.total_account_value : 0;
+      if (total > 0) {
+        const exposure = position.leg === "CSP" ? m.collateral : m.share_value;
+        m.position_pct = exposure / total * 100;
+      }
+
       return m;
+    }
+
+    // Calendar-day DTE fallback (used when an alert isn't available with trading-day DTE)
+    function dteCalendar(expirationISO) {
+      if (!expirationISO) return null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const exp = new Date(expirationISO + "T00:00:00");
+      const diffMs = exp - today;
+      return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    // Color class for cushion %
+    function cushionClass(c) {
+      if (c === null || c === undefined) return "";
+      if (c < 0) return "chip-bad";
+      if (c < 3) return "chip-warn";
+      return "chip-good";
+    }
+
+    // Color class for % captured
+    function capturedClass(c) {
+      if (c === null || c === undefined) return "";
+      if (c >= 80) return "chip-bright";
+      if (c >= 50) return "chip-good";
+      if (c < 0) return "chip-bad";
+      return "";
+    }
+
+    // Color class for position % of portfolio
+    function posPctClass(p) {
+      if (p === null || p === undefined) return "";
+      if (p >= 10) return "chip-bad";
+      if (p >= 8) return "chip-warn";
+      return "";
+    }
+
+    // Color class for P&L
+    function pnlClass(v) {
+      if (v === null || v === undefined) return "";
+      return v >= 0 ? "chip-good" : "chip-bad";
     }
 
     function computePortfolioMetrics(portfolio, positions) {
       let csp_collateral_total = 0;
       let share_value_total = 0;
       for (const p of positions) {
-        const m = computePositionMetrics(p);
+        const m = computePositionMetrics(p, portfolio);
         csp_collateral_total += m.collateral;
         share_value_total += m.share_value;
       }
@@ -559,7 +667,7 @@
         .join("");
     }
 
-    function renderPositions(positions) {
+    function renderPositions(positions, portfolio, alerts) {
       const container = document.getElementById("positions-container");
       if (!positions || positions.length === 0) {
         container.innerHTML = `
@@ -570,40 +678,80 @@
         return;
       }
 
+      // Map position_id -> alert for badge + accurate DTE
+      const alertByPid = {};
+      for (const a of (alerts || [])) {
+        if (a.position_id) alertByPid[a.position_id] = a;
+      }
+
       const rows = positions
         .map((p) => {
-          const m = computePositionMetrics(p);
+          const m = computePositionMetrics(p, portfolio);
+          const a = alertByPid[p.id];
           const sectorTag = p.sector_override || p.sector || "—";
+          const dte = a && a.computed_state && a.computed_state.dte !== undefined
+            ? a.computed_state.dte
+            : dteCalendar(p.expiration_date);
+          const cushion = m.cushion_pct;
+          const captured = m.pct_captured;
+          const stockMove = m.stock_move_pct;
+          const posPct = m.position_pct;
+          const pnl = m.unrealized_pnl;
+
+          const legBadge = `<span class="leg-badge ${p.leg.toLowerCase()}">${p.leg}</span>`;
+
+          let alertCell = "—";
+          if (a) {
+            const sev = a.severity.toLowerCase();
+            const ruleShort = a.rule_id ? a.rule_id.replace(/^(csp|cc|portfolio)_/, "") : "";
+            alertCell = `<span class="row-alert severity-${sev}">${a.severity}<span class="rule-id">${ruleShort}</span></span>`;
+          }
+
           return `
           <tr>
-            <td><strong>${p.ticker}</strong> <span style="color: var(--text-faint); font-size: 11px;">${sectorTag}</span></td>
-            <td>${p.leg}</td>
-            <td>${fmtMoney2(p.strike)}</td>
-            <td>${p.contracts}</td>
+            <td><strong>${p.ticker}</strong> <span style="color: var(--text-faint); font-size: 10.5px;">${sectorTag}</span></td>
+            <td>${legBadge}</td>
+            <td class="num">${fmtMoney2(p.strike)}</td>
+            <td class="num">${p.contracts}</td>
             <td>${fmtDate(p.expiration_date)}</td>
-            <td>${fmtMoney2(p.entry_premium_per_share)}</td>
-            <td>${fmtMoney0(m.collateral || m.share_value)}</td>
+            <td class="num">${dte !== null && dte !== undefined ? dte : "—"}</td>
+            <td class="num">${fmtMoney2(p.entry_premium_per_share)}</td>
+            <td class="num">${p.current_option_price !== null && p.current_option_price !== undefined ? fmtMoney2(p.current_option_price) : "—"}</td>
+            <td class="num ${capturedClass(captured)}">${captured !== undefined && captured !== null ? captured.toFixed(0) + "%" : "—"}</td>
+            <td class="num">${p.current_stock_price !== null && p.current_stock_price !== undefined ? fmtMoney2(p.current_stock_price) : "—"}${stockMove !== undefined && stockMove !== null ? ` <span style="color: var(--text-faint); font-size: 11px;">(${stockMove >= 0 ? "+" : ""}${stockMove.toFixed(1)}%)</span>` : ""}</td>
+            <td class="num ${cushionClass(cushion)}">${cushion !== undefined && cushion !== null ? (cushion >= 0 ? "+" : "") + cushion.toFixed(1) + "%" : "—"}</td>
+            <td class="num ${posPctClass(posPct)}">${posPct !== undefined && posPct !== null ? posPct.toFixed(1) + "%" : "—"}</td>
+            <td class="num">${fmtMoney0(m.collateral || m.share_value)}</td>
+            <td class="num ${pnlClass(pnl)}">${pnl !== undefined && pnl !== null ? (pnl >= 0 ? "+" : "") + fmtMoney0(pnl) : "—"}</td>
+            <td>${alertCell}</td>
           </tr>`;
         })
         .join("");
 
       container.innerHTML = `
-        <table class="positions">
-          <thead>
-            <tr>
-              <th>Ticker</th>
-              <th>Leg</th>
-              <th>Strike</th>
-              <th>Contracts</th>
-              <th>Expiration</th>
-              <th>Entry Premium</th>
-              <th>Collateral / Shares</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="hint" style="margin-top: 8px; color: var(--text-faint); font-size: 11px;">
-          Full metrics column-set lands in Phase 2 once the daily updater is in place.
+        <div class="positions-wrap">
+          <table class="positions">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Leg</th>
+                <th class="num">Strike</th>
+                <th class="num">Cont</th>
+                <th>Exp</th>
+                <th class="num">DTE</th>
+                <th class="num">Entry</th>
+                <th class="num">Now</th>
+                <th class="num">%Capt</th>
+                <th class="num">Stock</th>
+                <th class="num">Cushion</th>
+                <th class="num">Pos %</th>
+                <th class="num">Collateral</th>
+                <th class="num">P&amp;L</th>
+                <th>Alert</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
         </div>`;
     }
 
@@ -647,7 +795,7 @@
 
       renderHeader(portfolio, positions);
       renderAlerts(alerts);
-      renderPositions(positions);
+      renderPositions(positions, portfolio, alerts);
       renderFooter(portfolio, d.built_at);
     }
 

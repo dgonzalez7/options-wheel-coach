@@ -120,7 +120,7 @@ Array of position records.
 | Field | Type | Notes |
 |---|---|---|
 | `current_stock_price` | number | Latest close |
-| `current_option_price` | number | Latest option mid-price from the chain |
+| `current_option_price` | number | Latest option **ask** price — the realizable cost to close a short option position. Fallback: mid, then last. |
 | `current_delta` | number | Latest delta; useful when ITM for roll decisions |
 | `last_updated` | timestamp | When the script last touched this record |
 
