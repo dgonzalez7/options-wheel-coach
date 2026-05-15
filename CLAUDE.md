@@ -8,6 +8,33 @@ A position-management app for Dave's Options Wheel Strategy trading. It tracks o
 
 The app does NOT pick trades. The trade-picking comes from the weekly "Wheel Strategy" Substack newsletter, which produces a separate trade-brief HTML each Monday. This app's job is what comes after: managing the positions Dave actually placed.
 
+## Current state (as of 2026-05-14)
+
+**Phase 0, 1, and 2 are built and committed.** The system runs end-to-end. Dave has 8 real CSPs open (imported from his Excel tracker), and the alert engine fires correctly against them.
+
+**Daily runs are currently manual.** Dave runs `python scripts/daily_update.py` on his Windows machine (full network access, all deps installed). That refreshes prices via yfinance, evaluates rules, writes the snapshot, refreshes the dashboard, and produces `data/slack_message.txt`.
+
+**Automation is partially shipped, with a known gap.** A Cowork Scheduled Task (`options-wheel-daily-update`) fires at 10pm CT weekdays. It successfully posts `data/slack_message.txt` to `#all-personal-workspace` via the Slack MCP — but yfinance is blocked from inside the Cowork sandbox (proxy 403), so when the scheduled task re-runs `daily_update.py` it falls back to last-known prices rather than fetching fresh ones. The portfolio-level alerts (stress test, sector overweights, cash reserve) work fine without fresh prices; the per-position price-dependent rules degrade silently.
+
+**Open architectural decision (parked):** how to fully automate the Python run with real network access. Three candidates Dave is considering:
+- Hybrid: Windows Task Scheduler runs `daily_update.py` locally; existing Cowork task only handles the Slack post.
+- Claude Code Desktop `/schedule`: single tool, local execution, requires Slack MCP setup for Claude Code.
+- Status quo (manual): keep running `daily_update.py` by hand for now.
+
+## File editing convention — important
+
+**When editing files in this workspace, prefer bash heredoc writes over the Write/Edit file tools.**
+
+OneDrive sync can briefly desynchronize the local file with what the Cowork bash sandbox sees, occasionally corrupting writes. We hit a truncated-file bug at least once that required bash recovery to fix. Dave has "Always keep on this device" set on the project folder which mitigates the issue, but bash heredoc is the safer pattern:
+
+```bash
+cat > "/path/to/file.py" << 'PYEOF'
+... full file content ...
+PYEOF
+```
+
+Memory files live outside OneDrive (in AppData) and can use Write/Edit normally.
+
 ## Read these for full context
 
 Read in order if unfamiliar with the project:
@@ -32,9 +59,9 @@ This is the most important behavior to internalize.
 
 ## Daily run cadence
 
-- Schedule: **7pm CT, weekdays only**, via Cowork Scheduled Task
+- Schedule: **10pm CT weekdays for now**, via Cowork Scheduled Task `options-wheel-daily-update`. Dave plans to move it to 7pm CT next week.
 - Script: `scripts/daily_update.py`
-- Catch-up-aware: if the PC was off, the next run backfills missed market days
+- Catch-up-aware: if the PC was off, the next run backfills missed market days (stock prices only — option prices are best-effort).
 - Alert routing: CRITICAL + ACTION → Slack push; CAUTION + INFO → dashboard only
 
 ## Conventions
@@ -45,6 +72,7 @@ This is the most important behavior to internalize.
 - DTE uses the **NYSE market calendar** (skips weekends + holidays)
 - Cron uses **America/Chicago**; market-time logic uses **America/New_York**
 - One position per UUID; rolls produce a new position linked by `linked_roll_id`
+- `current_option_price` uses the **ASK** (the real close-cost for short positions), with mid/last as fallbacks
 
 ## Key file paths
 
@@ -56,12 +84,14 @@ This is the most important behavior to internalize.
 | Closed positions | `data/positions_closed.json` |
 | Daily snapshots | `data/snapshots/YYYY-MM-DD.json` |
 | Alert history | `data/alerts_history.json` |
+| Slack message queue | `data/slack_message.txt` |
 | Reference docs (NOT in repo) | `WheelStrategyRules/` |
 
 ## What NOT to do
 
 - **Never commit `data/`.** It contains Dave's actual financial positions. The `.gitignore` excludes it; respect that.
 - **Never commit `WheelStrategyRules/`.** It's paid Substack content and would violate the publisher's terms on a public repo.
+- **Never commit `dashboard/data.js`.** Generated, gitignored, contains real position data.
 - **Never modify open positions without Dave explicitly telling you to.** Don't auto-update on price moves, don't speculatively close positions, don't "fix" a stale entry without confirmation.
 - **Never execute trades.** Dave places orders in E-Trade. Your job is to update the JSON after he confirms the fill.
 - **Never post to Slack without an actual rule-engine alert firing.** No "FYI just checking in" messages.

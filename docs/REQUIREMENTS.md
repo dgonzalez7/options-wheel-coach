@@ -74,12 +74,16 @@ The dashboard gains tabs for long-term performance (monthly P&L, win rate, ROC, 
 
 ## Phasing
 
-**Phase 0 — Specification (this commit).** Documentation, schemas, seeded data files, no executable code.
+**Phase 0 — Specification** ✅ shipped 2026-05-14. Documentation, schemas, seeded data files, no executable code.
 
-**Phase 1 — Foundation.** `scripts/data_model.py` (pydantic schemas), `dashboard/index.html` (Today tab only, empty state). Prove the data contract and rendering work.
+**Phase 1 — Foundation** ✅ shipped 2026-05-14. `scripts/data_model.py` (pydantic schemas), `dashboard/index.html` (Today tab, empty state), `scripts/serve.py`.
 
-**Phase 2 — Daily updater.** `scripts/market_data.py`, `scripts/alerts_engine.py`, `scripts/daily_update.py`, `scripts/slack_notify.py`. Cowork Scheduled Task configured. Slack alerts live.
+**Phase 1.5 — File:// dashboard** ✅ shipped 2026-05-14. Dashboard reads from generated `dashboard/data.js` rather than fetching JSON, so double-clicking `index.html` works without a server.
 
-**Phase 3 — Performance and Risk views.** Add the remaining dashboard tabs. Charts. Aggregate analytics.
+**Phase 2 — Daily updater** ✅ shipped 2026-05-14. `scripts/market_data.py` (yfinance wrapper, ask-priced), `scripts/alerts_engine.py` (all 16 rules), `scripts/slack_notify.py` (formatter), `scripts/daily_update.py` (orchestrator). Expanded dashboard table with DTE / cushion / captured / position-% / P&L / alert-badge columns. Cowork Scheduled Task `options-wheel-daily-update` created at 10pm CT weekdays.
 
-**Phase 4 — Optional polish.** Manual HTML entry form if chat-paste workflow becomes annoying. Probably skipped.
+**Phase 2 — known automation gap:** yfinance is blocked from inside the Cowork sandbox (HTTP 403 proxy). The Cowork scheduled task can post `data/slack_message.txt` to Slack, but can't fetch fresh prices. Daily runs are currently triggered manually on Dave's Windows machine (full network access). Three candidate fixes parked for later: hybrid (WTS + Cowork), Claude Code Desktop /schedule, or remain manual.
+
+**Phase 3 — Performance and Risk views** ⏳ not yet started. Add Performance tab (monthly P&L, win rate, ROC, leg breakdowns), Risk tab (sector concentration, sizing vs limits, cash reserve, stress test visualization), and History tab (closed positions table with charts).
+
+**Phase 4 — Optional polish** ⏳ probably skipped. Manual HTML entry form if chat-paste workflow becomes annoying.
