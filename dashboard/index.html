@@ -753,9 +753,10 @@
       ];
       if (m.buffer_pct > 0) {
         stats.push({
-          label: "Wheel Buffer",
-          value: fmtMoney0(m.wheel_buffer),
-          sub: m.buffer_pct.toFixed(0) + "% of non-cash → eff. cash " + fmtMoney0(m.effective_cash),
+          label: "Effective Cash",
+          value: fmtMoney0(m.effective_cash),
+          sub: "Includes Wheel Buffer of " + fmtMoney0(m.wheel_buffer) +
+            " (" + m.buffer_pct.toFixed(0) + "% of non-cash)",
         });
       }
       stats.push(
