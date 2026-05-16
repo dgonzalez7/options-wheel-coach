@@ -296,6 +296,34 @@ def _csp_rules(
             consider="Pre-answer the 3 checks now so the next alert finds you ready.",
         )
 
+    # 7.5. CAUTION — Cushion narrowed by 50%+ from entry.
+    # Fires when current cushion is at or below half of entry cushion, and
+    # the position is still out of the near-the-money zone. Scale-invariant:
+    # works whether entry cushion was 5% or 20%.
+    entry_cush = None
+    if p.entry_stock_price and p.entry_stock_price > 0 and p.strike > 0 and p.leg == Leg.CSP:
+        entry_cush = (p.entry_stock_price - p.strike) / p.strike * 100
+    if (
+        entry_cush is not None
+        and entry_cush > 0
+        and cush is not None
+        and cush > 3
+        and cush <= entry_cush / 2
+    ):
+        return _make_alert(
+            rule_id="csp_cushion_narrowing",
+            severity=Severity.CAUTION,
+            scope=AlertScope.POSITION,
+            position=p,
+            computed_state={
+                **state,
+                "entry_cushion_pct": round(entry_cush, 2),
+                "cushion_reduction_pct": round((1 - cush / entry_cush) * 100, 1),
+            },
+            conservative_advice="No action; cushion has been reduced by 50%+ from where you opened. Watch tomorrow's update.",
+            consider="Roll down-and-out for a credit if you'd like to widen the cushion proactively, especially if DTE > 14. Or revisit the 3-check framework — what's the company doing that's moved the stock this far?",
+        )
+
     # 8. INFO — Premium milestone captured
     if (
         capt is not None
@@ -457,9 +485,18 @@ def _portfolio_rules(
     regime = portfolio.market_regime.value
     deployment_cap = DEPLOYMENT_CAPS.get(regime, 60.0)
 
+    # Wheel buffer: % of non-cash holdings treated as available backup for assignment.
+    # 0 = strict cash-secured semantics. See docs/RULE_CLARIFICATIONS.md.
+    non_cash = max(0.0, total - cash)
+    wheel_buffer = non_cash * (portfolio.wheel_buffer_pct / 100.0)
+    effective_cash = cash + wheel_buffer
+
     base_state = {
         "total_account_value": total,
         "cash_available": cash,
+        "wheel_buffer_pct": portfolio.wheel_buffer_pct,
+        "wheel_buffer": round(wheel_buffer, 2),
+        "effective_cash": round(effective_cash, 2),
         "csp_collateral_total": csp_collateral_total,
         "share_value_total": share_value_total,
         "deployment_pct": round(deployment_pct, 2),
@@ -516,14 +553,14 @@ def _portfolio_rules(
                 consider=f"Close the most-profitable position in {sector} to rebalance, if it's near a natural exit anyway.",
             ))
 
-    # 4. CRITICAL — Stress test fail
-    if csp_collateral_total > cash:
-        gap = csp_collateral_total - cash
+    # 4. CRITICAL — Stress test fail (uses effective_cash = cash + wheel_buffer)
+    if csp_collateral_total > effective_cash:
+        gap = csp_collateral_total - effective_cash
         alerts.append(_make_alert(
             rule_id="portfolio_stress_test_fail",
             severity=Severity.CRITICAL,
             scope=AlertScope.PORTFOLIO,
-            computed_state={**base_state, "shortfall": gap},
+            computed_state={**base_state, "shortfall": round(gap, 2)},
             conservative_advice="Close the lowest-conviction CSP to restore coverable assignment capacity.",
             consider="Add outside cash to the account before the next assignment-risk window if a roll-rather-than-close path is materially better.",
         ))

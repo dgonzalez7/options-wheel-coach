@@ -73,6 +73,13 @@ Evaluated in priority order. First match wins.
 **Conservative Advice:** No action today; monitor on the next daily update.
 **Consider:** Pre-answer the 3 checks now so the next alert finds you ready.
 
+### 7.5. CAUTION — Cushion narrowed 50%+ from entry
+**Rule ID:** `csp_cushion_narrowing`
+**Trigger:** `entry_cushion_pct > 0 AND current_cushion_pct > 3 AND current_cushion_pct <= entry_cushion_pct / 2`. Where `entry_cushion_pct = (entry_stock_price - strike) / strike * 100`. The `current_cushion_pct > 3` guard prevents double-firing with `csp_near_the_money`.
+**Conservative Advice:** No action; cushion has been reduced by 50%+ from where you opened. Watch tomorrow's update.
+**Consider:** Roll down-and-out for a credit if you'd like to widen the cushion proactively, especially if DTE > 14. Or revisit the 3-check framework — what's the company doing that's moved the stock this far?
+**Why ratio (not absolute pp):** Scale-invariant. A 3pp drop means very different things from +5% (cushion almost gone) vs from +18% (cushion barely moved). The "halved" framing is consistent across entry cushion levels.
+
 ### 8. INFO — Premium milestone captured
 **Rule ID:** `csp_profit_milestone`
 **Trigger:** `pct_premium_captured >= portfolio.rules.csp_info_milestone_pct AND dte > portfolio.rules.min_dte_for_profit_close`
@@ -150,7 +157,7 @@ Evaluated once per run, independent of individual positions.
 
 ### 4. CRITICAL — Stress test fail
 **Rule ID:** `portfolio_stress_test_fail`
-**Trigger:** `sum(all_open_CSP_collateral) > cash_available`
+**Trigger:** `sum(all_open_CSP_collateral) > effective_cash`, where `effective_cash = cash_available + (wheel_buffer_pct% × non_cash_holdings)`. With `wheel_buffer_pct = 0` (default), this is strict cash-secured semantics. Raise the buffer when the account holds other liquid assets you'd accept as assignment backup.
 **Conservative Advice:** Close the lowest-conviction CSP to restore coverable assignment capacity.
 **Consider:** Add outside cash to the account before the next assignment-risk window if a roll-rather-than-close path is materially better.
 

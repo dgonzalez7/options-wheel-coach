@@ -60,6 +60,22 @@ The "How to Run the Wheel Strategy in a Bear Market" article recommends not auto
 
 The CSP checklist defines A+ / A / Pass grades using thresholds on delta, DTE, spread, OI, ROC, cushion, and earnings clearance. The app records `entry_delta` so the grade is computable in retrospect, but does not block trade entry on grade. Dave chooses which newsletter setups to place each Monday using cushion % as the primary filter; the grading framework is available for retrospective analysis if needed.
 
+## The wheel buffer — strict vs. mixed-use semantics
+
+The Wheel docs assume each Wheel account is dedicated to the strategy: "cash-secured" means cash, period, and the stress test is a hard binary check of cash vs. CSP collateral. That's the right semantics when a single account is purpose-built.
+
+A mixed-use brokerage account is messier. Cash on hand alone usually understates the available backup for a simultaneous-assignment scenario, because other holdings could be liquidated to meet delivery. But "I could probably sell stuff" isn't the same as cash-secured — there's timing risk (T+1 settlement vs. overnight assignment), tax cost (forced gains realization), and correlation risk (broad selloffs hit both the CSPs and the equity buffer at once).
+
+To reflect this honestly, `portfolio.wheel_buffer_pct` lets you specify how much of your non-cash holdings (`total_account_value - cash_available`) you're genuinely willing to use as backup. The stress test then evaluates `effective_cash = cash + (buffer_pct% × non_cash)` against total CSP collateral.
+
+Guideline values:
+- `0` — strict cash-secured semantics. Use when the account is dedicated to the Wheel.
+- `20-30` — conservative. Counts a modest portion of liquid non-cash holdings.
+- `30-50` — moderate. Reasonable for a mixed-use account where you'd accept some forced liquidation in a crunch.
+- `>50` — aggressive. Effectively levering the Wheel against your other holdings. The Wheel docs would not recommend this — at that point you're not really cash-secured, you're cash-and-portfolio-secured.
+
+Whatever value you choose, the position-sizing rules (no single position > 10%, sector cap 25%) still apply against `total_account_value` — those don't bend.
+
 ## Inconsistencies left unresolved
 
 A few stylistic disagreements between the docs are flagged here for transparency but not "fixed" because they don't affect logic:

@@ -49,6 +49,7 @@ Single document. The denominator for all sizing checks.
 | `total_account_value` | number | Net Liquidation Value across the account |
 | `cash_available` | number | Settled cash, the denominator for the stress test |
 | `market_regime` | enum | `bull` \| `neutral` \| `bear` — adjusts deployment caps and CSP delta band |
+| `wheel_buffer_pct` | number | 0-100. Portion of non-cash holdings (`total - cash`) counted as backup for the stress test. `0` enforces strict cash-secured semantics. Raise to 20-50 for a mixed-use account where you'd accept liquidating other holdings to meet assignment. |
 | `rules.csp_profit_threshold_pct` | number | % premium captured that fires the CSP close-ACTION alert |
 | `rules.csp_info_milestone_pct` | number | % premium captured that fires the dashboard-only INFO milestone |
 | `rules.cc_profit_threshold_pct` | number | % premium captured that fires the CC close-ACTION alert |

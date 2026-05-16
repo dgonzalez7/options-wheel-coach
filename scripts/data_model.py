@@ -101,6 +101,7 @@ class Portfolio(BaseModel):
     total_account_value: float = Field(gt=0)
     cash_available: float = Field(ge=0)
     market_regime: MarketRegime = MarketRegime.BULL
+    wheel_buffer_pct: float = Field(default=0, ge=0, le=100)
     rules: PortfolioRules = Field(default_factory=PortfolioRules)
     sector_limits: SectorLimits = Field(default_factory=SectorLimits)
     notes: str = ""

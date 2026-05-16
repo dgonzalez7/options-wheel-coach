@@ -90,8 +90,8 @@
 
     .account-stats {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 12px 24px;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 12px 20px;
     }
 
     .stat {
@@ -352,6 +352,139 @@
       font-size: 12px;
     }
 
+    /* ---------- Risk tab ---------- */
+
+    .risk-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .risk-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      border-left: 3px solid var(--border-strong);
+    }
+    .risk-card.status-good { border-left-color: var(--ok); }
+    .risk-card.status-warn { border-left-color: var(--caution); }
+    .risk-card.status-bad  { border-left-color: var(--critical); }
+    .risk-card .label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .risk-card .value {
+      font-size: 22px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    .risk-card .value.status-good { color: var(--ok); }
+    .risk-card .value.status-warn { color: var(--caution); }
+    .risk-card .value.status-bad  { color: var(--critical); }
+    .risk-card .sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+
+    .risk-bar-row {
+      display: grid;
+      grid-template-columns: 180px 1fr 80px;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .risk-bar-label {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .risk-bar-label .sub {
+      color: var(--text-faint);
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .risk-bar-track {
+      position: relative;
+      height: 14px;
+      background: #f1f5f9;
+      border-radius: 7px;
+      overflow: visible;
+    }
+    .risk-bar-fill {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      border-radius: 7px;
+    }
+    .risk-bar-fill.good { background: var(--ok); }
+    .risk-bar-fill.warn { background: var(--caution); }
+    .risk-bar-fill.bad  { background: var(--critical); }
+    .risk-bar-threshold {
+      position: absolute;
+      top: -3px; bottom: -3px;
+      width: 2px;
+      background: rgba(15, 23, 42, 0.4);
+    }
+    .risk-bar-threshold-label {
+      position: absolute;
+      top: -16px;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: var(--text-faint);
+      white-space: nowrap;
+    }
+    .risk-bar-value {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .risk-bar-value.status-bad  { color: var(--critical); font-weight: 600; }
+    .risk-bar-value.status-warn { color: var(--caution); font-weight: 600; }
+    .risk-bar-value.status-good { color: var(--text-muted); }
+
+    .risk-list-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .risk-list-item:last-child { border-bottom: none; }
+    .risk-list-item .dte-pill {
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #e2e8f0;
+      color: var(--text);
+      min-width: 60px;
+      text-align: center;
+    }
+    .risk-list-item .dte-pill.urgent { background: #fed7aa; color: var(--action); }
+    .risk-list-item .dte-pill.critical { background: #fee2e2; color: var(--critical); }
+    .risk-list-item .label { flex: 1; }
+    .risk-list-item .meta { font-size: 11px; color: var(--text-muted); }
+
+    .risk-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-style: italic;
+    }
+
     /* ---------- Responsive ---------- */
 
     @media (max-width: 1100px) {
@@ -410,8 +543,21 @@
 
       <!-- Risk -->
       <section id="tab-risk" class="tab-pane" role="tabpanel">
+        <div class="risk-grid" id="risk-health-cards"></div>
+
         <div class="section">
-          <div class="coming-soon">Coming in Phase 3.</div>
+          <h2>Position Sizing</h2>
+          <div id="risk-positions"></div>
+        </div>
+
+        <div class="section">
+          <h2>Sector Concentration</h2>
+          <div id="risk-sectors"></div>
+        </div>
+
+        <div class="section">
+          <h2>Calendar Landmines</h2>
+          <div id="risk-calendar"></div>
         </div>
       </section>
 
@@ -566,12 +712,21 @@
       }
       const deployed = csp_collateral_total + share_value_total;
       const total = portfolio.total_account_value || 0;
+      const cash = portfolio.cash_available || 0;
+      const non_cash = Math.max(0, total - cash);
+      const buffer_pct = portfolio.wheel_buffer_pct || 0;
+      const wheel_buffer = non_cash * buffer_pct / 100;
+      const effective_cash = cash + wheel_buffer;
       return {
         csp_collateral_total,
         share_value_total,
         deployed,
         deployment_pct: total > 0 ? (deployed / total) * 100 : 0,
-        cash_pct: total > 0 ? (portfolio.cash_available / total) * 100 : 0,
+        cash_pct: total > 0 ? (cash / total) * 100 : 0,
+        non_cash,
+        wheel_buffer,
+        effective_cash,
+        buffer_pct,
         active_count: positions.length,
       };
     }
@@ -595,6 +750,15 @@
           value: fmtMoney0(portfolio.cash_available),
           sub: fmtPct1(m.cash_pct) + " of total",
         },
+      ];
+      if (m.buffer_pct > 0) {
+        stats.push({
+          label: "Wheel Buffer",
+          value: fmtMoney0(m.wheel_buffer),
+          sub: m.buffer_pct.toFixed(0) + "% of non-cash → eff. cash " + fmtMoney0(m.effective_cash),
+        });
+      }
+      stats.push(
         {
           label: "CSP Collateral",
           value: fmtMoney0(m.csp_collateral_total),
@@ -621,7 +785,7 @@
           value: String(m.active_count),
           sub: "open",
         },
-      ];
+      );
 
       const statsEl = document.getElementById("account-stats");
       statsEl.innerHTML = stats
@@ -755,6 +919,250 @@
         </div>`;
     }
 
+    // Regime-aware caps; mirrors DEPLOYMENT_CAPS in alerts_engine.py
+    const DEPLOYMENT_CAPS = { bull: 60, neutral: 55, bear: 50 };
+    const CASH_RESERVE_TARGETS = { bull: 25, neutral: 30, bear: 40 };
+
+    function renderRiskTab(portfolio, positions, alerts) {
+      const m = computePortfolioMetrics(portfolio, positions);
+      const regime = (portfolio.market_regime || "bull").toLowerCase();
+      const depCap = DEPLOYMENT_CAPS[regime] || 60;
+      const cashTarget = CASH_RESERVE_TARGETS[regime] || 25;
+
+      // ---- Health cards ----
+      const cardsEl = document.getElementById("risk-health-cards");
+      // Cash reserve status
+      const cashStatus = m.cash_pct >= cashTarget ? "good"
+        : m.cash_pct >= 20 ? "warn" : "bad";
+      // Deployment status
+      const depStatus = m.deployment_pct <= depCap ? "good"
+        : m.deployment_pct <= depCap + 5 ? "warn" : "bad";
+      // Stress test
+      const stressGap = m.csp_collateral_total - m.effective_cash;
+      const stressStatus = stressGap <= 0 ? "good" : "bad";
+      // ITM count
+      const itmPositions = positions.filter((p) => {
+        if (p.current_stock_price === null || p.current_stock_price === undefined) return false;
+        return p.leg === "CSP"
+          ? p.current_stock_price < p.strike
+          : p.current_stock_price > p.strike;
+      });
+      const itmTotal = itmPositions.reduce((sum, p) => {
+        const m2 = computePositionMetrics(p, portfolio);
+        return sum + (m2.collateral || m2.share_value || 0);
+      }, 0);
+
+      const cards = [
+        {
+          label: "Cash Reserve",
+          value: fmtPct1(m.cash_pct),
+          sub: fmtMoney0(portfolio.cash_available) +
+            " · target " + cashTarget + "% (" + regime + ")",
+          status: cashStatus,
+        },
+      ];
+      // Conditional Effective Reserve card when wheel_buffer is active.
+      if (m.buffer_pct > 0) {
+        const total = portfolio.total_account_value || 0;
+        const effPct = total > 0 ? (m.effective_cash / total) * 100 : 0;
+        const effStatus = effPct >= cashTarget ? "good"
+          : effPct >= 20 ? "warn" : "bad";
+        cards.push({
+          label: "Effective Reserve",
+          value: fmtPct1(effPct),
+          sub: fmtMoney0(m.effective_cash) +
+            " (cash + " + m.buffer_pct.toFixed(0) + "% buffer = " +
+            fmtMoney0(m.wheel_buffer) + ") · target " + cashTarget + "%",
+          status: effStatus,
+        });
+      }
+      cards.push(
+        {
+          label: "Deployment",
+          value: fmtPct1(m.deployment_pct),
+          sub: fmtMoney0(m.deployed) + " of " + fmtMoney0(portfolio.total_account_value) +
+            " · cap " + depCap + "% (" + regime + ")",
+          status: depStatus,
+        },
+        {
+          label: "Stress Test",
+          value: stressGap <= 0 ? "PASS" : "FAIL",
+          sub: stressGap <= 0
+            ? "effective cash exceeds CSP collateral by " + fmtMoney0(-stressGap)
+            : "shortfall " + fmtMoney0(stressGap) + " vs effective cash " + fmtMoney0(m.effective_cash),
+          status: stressStatus,
+        },
+        {
+          label: "ITM Exposure",
+          value: String(itmPositions.length),
+          sub: itmPositions.length === 0
+            ? "no positions in-the-money"
+            : itmTotal === 0
+              ? itmPositions.length + " position(s) ITM"
+              : fmtMoney0(itmTotal) + " across " + itmPositions.length + " position(s)",
+          status: itmPositions.length === 0 ? "good" : "warn",
+        },
+      );
+
+      cardsEl.innerHTML = cards
+        .map(
+          (c) => `
+        <div class="risk-card status-${c.status}">
+          <div class="label">${c.label}</div>
+          <div class="value status-${c.status}">${c.value}</div>
+          <div class="sub">${c.sub}</div>
+        </div>`
+        )
+        .join("");
+
+      // ---- Position sizing bars ----
+      const posEl = document.getElementById("risk-positions");
+      if (positions.length === 0) {
+        posEl.innerHTML = `<div class="risk-empty">No open positions.</div>`;
+      } else {
+        const SIZE_CEILING = 10;  // hard rule
+        const SIZE_WARN = 8;      // warning threshold
+        // Width of the bar represents 0..max where max = max(15, biggest position + 2)
+        const sized = positions
+          .map((p) => {
+            const pm = computePositionMetrics(p, portfolio);
+            return { p, pos_pct: pm.position_pct || 0, exposure: pm.collateral || pm.share_value || 0 };
+          })
+          .sort((a, b) => b.pos_pct - a.pos_pct);
+        const maxPct = Math.max(15, ...sized.map((s) => s.pos_pct + 2));
+        posEl.innerHTML = sized
+          .map(({ p, pos_pct, exposure }) => {
+            const status = pos_pct >= SIZE_CEILING ? "bad"
+              : pos_pct >= SIZE_WARN ? "warn" : "good";
+            const fillW = Math.min(100, (pos_pct / maxPct) * 100);
+            const warnX = (SIZE_WARN / maxPct) * 100;
+            const ceilingX = (SIZE_CEILING / maxPct) * 100;
+            return `
+            <div class="risk-bar-row">
+              <div class="risk-bar-label">
+                <strong>${p.ticker}</strong>
+                <span class="sub">$${p.strike} ${p.leg}</span>
+              </div>
+              <div class="risk-bar-track">
+                <div class="risk-bar-fill ${status}" style="width:${fillW}%"></div>
+                <div class="risk-bar-threshold" style="left:${warnX}%"></div>
+                <div class="risk-bar-threshold" style="left:${ceilingX}%"></div>
+              </div>
+              <div class="risk-bar-value status-${status}">
+                ${pos_pct.toFixed(1)}%
+              </div>
+            </div>`;
+          })
+          .join("") +
+          `<div class="sub" style="font-size:11px;color:var(--text-faint);margin-top:8px;">
+            Thresholds: 8% warning · 10% ceiling
+          </div>`;
+      }
+
+      // ---- Sector concentration ----
+      const sectorEl = document.getElementById("risk-sectors");
+      const bySector = {};
+      for (const p of positions) {
+        const sec = p.sector_override || p.sector || "Unknown";
+        if (!bySector[sec]) bySector[sec] = { value: 0, count: 0 };
+        const pm = computePositionMetrics(p, portfolio);
+        bySector[sec].value += pm.collateral || pm.share_value || 0;
+        bySector[sec].count += 1;
+      }
+      const SECTOR_CAP = (portfolio.sector_limits && portfolio.sector_limits.max_per_sector_pct) || 25;
+      const SECTOR_POS_MAX = (portfolio.sector_limits && portfolio.sector_limits.max_positions_per_sector) || 3;
+      const total = portfolio.total_account_value || 1;
+      const sectors = Object.entries(bySector)
+        .map(([sec, d]) => ({ sec, pct: (d.value / total) * 100, value: d.value, count: d.count }))
+        .sort((a, b) => b.pct - a.pct);
+
+      if (sectors.length === 0) {
+        sectorEl.innerHTML = `<div class="risk-empty">No open positions yet.</div>`;
+      } else {
+        const maxPct = Math.max(SECTOR_CAP + 5, ...sectors.map((s) => s.pct + 2));
+        sectorEl.innerHTML = sectors
+          .map(({ sec, pct, value, count }) => {
+            const status = pct > SECTOR_CAP ? "bad"
+              : pct > SECTOR_CAP - 5 ? "warn" : "good";
+            const countOver = count > SECTOR_POS_MAX;
+            const fillW = Math.min(100, (pct / maxPct) * 100);
+            const capX = (SECTOR_CAP / maxPct) * 100;
+            return `
+            <div class="risk-bar-row">
+              <div class="risk-bar-label">
+                <strong>${sec}</strong>
+                <span class="sub">${count}${countOver ? `/${SECTOR_POS_MAX}⚠` : ""} pos · ${fmtMoney0(value)}</span>
+              </div>
+              <div class="risk-bar-track">
+                <div class="risk-bar-fill ${status}" style="width:${fillW}%"></div>
+                <div class="risk-bar-threshold" style="left:${capX}%"></div>
+              </div>
+              <div class="risk-bar-value status-${status}">
+                ${pct.toFixed(1)}%
+              </div>
+            </div>`;
+          })
+          .join("") +
+          `<div class="sub" style="font-size:11px;color:var(--text-faint);margin-top:8px;">
+            Threshold: ${SECTOR_CAP}% per sector · max ${SECTOR_POS_MAX} positions per sector
+          </div>`;
+      }
+
+      // ---- Calendar landmines ----
+      const calEl = document.getElementById("risk-calendar");
+      const alertByPid = {};
+      for (const a of (alerts || [])) if (a.position_id) alertByPid[a.position_id] = a;
+      const getDte = (p) => {
+        const a = alertByPid[p.id];
+        return (a && a.computed_state && a.computed_state.dte !== undefined)
+          ? a.computed_state.dte
+          : dteCalendar(p.expiration_date);
+      };
+      // Earnings inside DTE
+      const earningsInDte = positions.filter((p) => {
+        if (!p.earnings_date) return false;
+        const e = new Date(p.earnings_date + "T00:00:00");
+        const x = new Date(p.expiration_date + "T00:00:00");
+        return e < x;
+      });
+      // Positions within 14 DTE (sorted by DTE asc)
+      const within14 = positions
+        .filter((p) => {
+          const d = getDte(p);
+          return d !== null && d !== undefined && d <= 14;
+        })
+        .sort((a, b) => (getDte(a) || 0) - (getDte(b) || 0));
+
+      const parts = [];
+      if (earningsInDte.length > 0) {
+        parts.push(`<div style="font-weight:600;font-size:12px;color:var(--critical);margin-bottom:6px;">Earnings inside DTE (${earningsInDte.length})</div>`);
+        parts.push(earningsInDte.map((p) => `
+          <div class="risk-list-item">
+            <span class="dte-pill critical">earn ${p.earnings_date}</span>
+            <span class="label"><strong>${p.ticker}</strong> $${p.strike} ${p.leg} · exp ${fmtDate(p.expiration_date)}</span>
+          </div>
+        `).join(""));
+      }
+      if (within14.length > 0) {
+        parts.push(`<div style="font-weight:600;font-size:12px;color:var(--text);margin-top:${earningsInDte.length ? 12 : 0}px;margin-bottom:6px;">Within 14 DTE (${within14.length})</div>`);
+        parts.push(within14.map((p) => {
+          const d = getDte(p);
+          const cls = d <= 7 ? "urgent" : "";
+          return `
+            <div class="risk-list-item">
+              <span class="dte-pill ${cls}">${d} DTE</span>
+              <span class="label"><strong>${p.ticker}</strong> $${p.strike} ${p.leg}</span>
+              <span class="meta">exp ${fmtDate(p.expiration_date)}</span>
+            </div>`;
+        }).join(""));
+      }
+      if (parts.length === 0) {
+        calEl.innerHTML = `<div class="risk-empty">No upcoming expirations within 14 DTE and no earnings inside any contract.</div>`;
+      } else {
+        calEl.innerHTML = parts.join("");
+      }
+    }
+
     function renderFooter(portfolio, builtAt) {
       const snap = fmtDate(portfolio.as_of) + " (manual)";
       const built = builtAt
@@ -796,6 +1204,7 @@
       renderHeader(portfolio, positions);
       renderAlerts(alerts);
       renderPositions(positions, portfolio, alerts);
+      renderRiskTab(portfolio, positions, alerts);
       renderFooter(portfolio, d.built_at);
     }
 

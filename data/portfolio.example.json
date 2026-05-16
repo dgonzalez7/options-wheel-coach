@@ -16,5 +16,6 @@
     "max_per_sector_pct": 25,
     "max_positions_per_sector": 3
   },
-  "notes": "Placeholder values. Copy this file to portfolio.json and fill in your real numbers."
+  "notes": "Placeholder values. Copy this file to portfolio.json and fill in your real numbers. wheel_buffer_pct=0 enforces strict cash-secured semantics; raise to 20-50 if your account holds other liquid assets you'd accept as assignment backup.",
+  "wheel_buffer_pct": 0
 }
